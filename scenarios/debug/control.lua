@@ -61,11 +61,36 @@ script.on_event(defines.events.on_player_created, function(event)
     return
   end
 
+  local ruin_sizes = remote.call("AbandonedRuins", "get_ruin_sizes")
+
+  -- The normal ruin pool may contain the same ruin table more than once to
+  -- implement spawn weighting. The test world is an overview, so display
+  -- each actual ruin definition only once without changing the source pool.
+  local display_ruin_set = {}
   local total_ruins_amount = 0
-  for _, size in pairs(remote_call("AbandonedRuins", "get_ruin_sizes")) do
+
+  for _, size in ipairs(ruin_sizes) do
     log(string.format("[on_player_created]: size='%s'", size))
-    total_ruins_amount = total_ruins_amount + ruin_set[size]
+    local source_ruins = ruin_set[size] or {}
+    local unique_ruins = {}
+    local seen_ruins = {}
+
+    for _, ruin in ipairs(source_ruins) do
+      if not seen_ruins[ruin] then
+        seen_ruins[ruin] = true
+        unique_ruins[#unique_ruins + 1] = ruin
+      end
+    end
+
+    display_ruin_set[size] = unique_ruins
+    total_ruins_amount = total_ruins_amount + #unique_ruins
   end
+
+  if total_ruins_amount == 0 then
+    utils.output_message("Abandoned Ruins: Current ruin-set is empty! Will not create debug world.")
+    return
+  end
+
   local chunk_radius = math.ceil(math.sqrt(total_ruins_amount) / 2)
 
   log(string.format("[on_player_created]: total_ruins_amount=%d,chunk_radius=%.2f", total_ruins_amount, chunk_radius))
@@ -78,7 +103,7 @@ script.on_event(defines.events.on_player_created, function(event)
       elevation = 10
     }
   })
-  log(string.format("[on_player_created]: surface[]='%s'", type(surface))) end
+  log(string.format("[on_player_created]: surface[]='%s'", type(surface)))
 
   if not (surface and surface.valid) then
     -- skip invalid surfaces
@@ -94,11 +119,12 @@ script.on_event(defines.events.on_player_created, function(event)
   local x = -chunk_radius
   local y = -chunk_radius
 
-  for size, ruins in pairs(ruin_set) do
+  for _, size in ipairs(ruin_sizes) do
+    local ruins = display_ruin_set[size] or {}
     log(string.format("[on_player_created]: size='%s',ruins()=%d", size, #ruins))
     local half_size = spawning.ruin_half_sizes[size]
 
-    for _, ruin in pairs(ruins) do
+    for _, ruin in ipairs(ruins) do
       log(string.format("[on_player_created]: Spawning ruin.name='%s' ...", utils.get_ruin_name(ruin)))
       local center = utils.get_center_of_chunk({x = x, y = y})
 
