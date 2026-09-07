@@ -436,7 +436,20 @@ spawning.spawn_ruin = function(ruin, half_size, center, surface)
     error(string.format("surface.name='%s' is not allowed to spawn this ruin", surface.name))
   end
 
-  if clear_area(half_size, center, surface) then
+  if debug_log then
+    log(string.format(
+      "[spawn_ruin]: surface.name='%s',constants.DEBUG_SURFACE_NAME='%s'",
+      surface.name,
+      constants.DEBUG_SURFACE_NAME
+    ))
+  end
+
+  local can_spawn = surface.name == constants.DEBUG_SURFACE_NAME
+  if not can_spawn then
+    can_spawn = clear_area(half_size, center, surface)
+  end
+
+  if can_spawn then
     local variables = {}
     if debug_log then log(string.format("[spawn_ruin]: ruin.variables[]='%s'", type(ruin.variables))) end
     if ruin.variables ~= nil and table_size(ruin.variables) > 0 then
